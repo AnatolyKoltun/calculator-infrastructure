@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # NATS JetStream
+  nats:
+    image: nats:latest
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"   # Клиентские соединения
+      - "8222:8222"   # Веб-интерфейс мониторинга
+    networks:
+      - calculator-net
+
+  # Сервис storage (gRPC сервер + NATS consumer)
+  calculator-storage:
+    # Если хотите собирать из локального кода:
+    build:
+      context: https://github.com/AnatolyKoltun/calculator-storage.git#main
+      # Или если репозиторий склонирован рядом:
+      # context: ../calculator-storage
+    # Или используйте готовый образ (если загрузили в registry)
+    # image: your-registry/calculator-storage:latest
+    ports:
+      - "50051:50051"   # gRPC порт
+    environment:
+      NATS_URL: "nats://nats:4222"
+      # Другие переменные, которые нужны storage (например, DATABASE_URL)
+    depends_on:
+      - nats
+    networks:
+      - calculator-net
+
+  # Сервис api (HTTP API + NATS publisher + gRPC client)
+  calculator-api:
+    build:
+      context: https://github.com/AnatolyKoltun/calculator-api.git#main
+      # context: ../calculator-api
+    ports:
+      - "8080:8080"   # HTTP порт API
+    environment:
+      NATS_URL: "nats://nats:4222"
+      STORAGE_SERVICE_URL: "calculator-storage:50051"   # gRPC адрес
+    depends_on:
+      - nats
+      - calculator-storage
+    networks:
+      - calculator-net
+
+networks:
+  calculator-net:
+    driver: bridge
