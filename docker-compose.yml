@@ -14,7 +14,7 @@ services:
   # Сервис storage (должен стать gRPC сервером + NATS consumer)
   calculator-storage:
     build:
-      context: https://github.com/AnatolyKoltun/calculator-storage.git#main
+      context: https://github.com/AnatolyKoltun/calculator-storage#main
     ports:
       - "50051:50051"   # gRPC порт
     environment:
@@ -31,7 +31,7 @@ services:
   # Сервис api (HTTP API + NATS publisher + gRPC client)
   calculator-api:
     build:
-      context: https://github.com/AnatolyKoltun/calculator-api.git#main
+      context: https://github.com/AnatolyKoltun/calculator-api#main
     ports:
       - "8080:8080"   # HTTP порт API
     environment:
