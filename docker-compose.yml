@@ -11,20 +11,18 @@ services:
     networks:
       - calculator-net
 
-  # Сервис storage (gRPC сервер + NATS consumer)
+  # Сервис storage (должен стать gRPC сервером + NATS consumer)
   calculator-storage:
-    # Если хотите собирать из локального кода:
     build:
       context: https://github.com/AnatolyKoltun/calculator-storage.git#main
-      # Или если репозиторий склонирован рядом:
-      # context: ../calculator-storage
-    # Или используйте готовый образ (если загрузили в registry)
-    # image: your-registry/calculator-storage:latest
     ports:
       - "50051:50051"   # gRPC порт
     environment:
       NATS_URL: "nats://nats:4222"
-      # Другие переменные, которые нужны storage (например, DATABASE_URL)
+      # Если storage работает с БД, добавьте переменные
+      # DB_HOST: postgres
+      # DB_USER: user
+      # DB_PASSWORD: password
     depends_on:
       - nats
     networks:
@@ -34,7 +32,6 @@ services:
   calculator-api:
     build:
       context: https://github.com/AnatolyKoltun/calculator-api.git#main
-      # context: ../calculator-api
     ports:
       - "8080:8080"   # HTTP порт API
     environment:
