@@ -1,42 +1,63 @@
-version: '3.8'
-
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - calculator-net
+
   # NATS JetStream
   nats:
     image: nats:latest
-    command: ["-js", "-m", "8222"]
+    command: ["-js", "-m", "${NATS_MONITOR_PORT}"]
     ports:
-      - "4222:4222"   # Клиентские соединения
-      - "8222:8222"   # Веб-интерфейс мониторинга
+      - "${NATS_CLIENT_PORT}:4222"   # Клиентские соединения
+      - "${NATS_MONITOR_PORT}:8222"   # Веб-интерфейс мониторинга
     networks:
       - calculator-net
 
   # Сервис storage (должен стать gRPC сервером + NATS consumer)
   calculator-storage:
     build:
-      context: https://github.com/AnatolyKoltun/calculator-storage#main
+      context: ../calculator-storage
     ports:
-      - "50051:50051"   # gRPC порт
+      - "${STORAGE_GRPC_PORT}:50051"   # gRPC порт
     environment:
-      NATS_URL: "nats://nats:4222"
-      # Если storage работает с БД, добавьте переменные
-      # DB_HOST: postgres
-      # DB_USER: user
-      # DB_PASSWORD: password
+      NATS_URL: ${NATS_INTERNAL_URL}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
     depends_on:
-      - nats
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
     networks:
       - calculator-net
 
   # Сервис api (HTTP API + NATS publisher + gRPC client)
   calculator-api:
     build:
-      context: https://github.com/AnatolyKoltun/calculator-api#main
+      context: ../calculator-api
     ports:
-      - "8080:8080"   # HTTP порт API
+      - "${API_PORT}:8080"   # HTTP порт API
     environment:
-      NATS_URL: "nats://nats:4222"
-      STORAGE_SERVICE_URL: "calculator-storage:50051"   # gRPC адрес
+      NATS_URL: ${NATS_INTERNAL_URL}
+      STORAGE_SERVICE_URL: ${STORAGE_SERVICE_URL}
     depends_on:
       - nats
       - calculator-storage
@@ -46,3 +67,6 @@ services:
 networks:
   calculator-net:
     driver: bridge
+
+volumes:
+  postgres-data:
