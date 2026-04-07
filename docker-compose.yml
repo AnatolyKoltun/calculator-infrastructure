@@ -58,6 +58,7 @@ services:
     environment:
       NATS_URL: ${NATS_INTERNAL_URL}
       STORAGE_SERVICE_URL: ${STORAGE_SERVICE_URL}
+      API_PORT: ${API_PORT}
     depends_on:
       - nats
       - calculator-storage
